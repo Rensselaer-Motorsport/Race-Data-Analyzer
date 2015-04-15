@@ -158,7 +158,7 @@ class GUI_window(QtGui.QMainWindow):
     def createRMplot(self, sensorName):
         newRMplot = RMplot(sensorName)
         newRMplot.makePlot(self.data, sensorName)
-        self.addDockWidget(Qt.LeftDockWidgetArea, newRMplot)
+        self.addDockWidget(Qt.TopDockWidgetArea, newRMplot)
 
     #---------------------------
     #-----RMtable Functions-----
@@ -179,7 +179,7 @@ class GUI_window(QtGui.QMainWindow):
     def createRMtable(self, sensorName):
         newRMtable = RMtable(sensorName)
         newRMtable.makeTable(self.data, sensorName)
-        self.addDockWidget(Qt.LeftDockWidgetArea, newRMtable)
+        self.addDockWidget(Qt.TopDockWidgetArea, newRMtable)
 
 #----------------------
 #-----RMplot Class-----
@@ -204,6 +204,7 @@ class RMplot(QtGui.QDockWidget):
         self.hLine = pg.InfiniteLine(angle=0, movable=False)
         self.vLine = pg.InfiniteLine(angle=90, movable=False)
         self.proxy = pg.SignalProxy(self.plot.scene().sigMouseMoved, rateLimit=60, slot=self.mouseMoved)
+        self.setAllowedAreas(Qt.DockWidgetArea_Mask)
 
     '''
     Makes the pyqtgraph plot widget and adds it to this RMplot object
@@ -259,7 +260,7 @@ class RMplot(QtGui.QDockWidget):
             currY = self.data.get_sensor_values(str(self.name))[index]
             self.vLine.setPos(currX)
             self.hLine.setPos(currY)
-            self.timeLabel.setText("<span style='font-size: 12pt'>Time=%0.1f seconds,   <span style='color: red'>Value=%0.1f units</span>" % (currX, currY))
+            self.timeLabel.setText("<span style='font-size: 12pt'>Time=%0.4f seconds,   <span style='color: red'>Value=%0.4f units</span>" % (currX, currY))
 
 #-----------------------
 #-----RMtable Class-----
@@ -281,14 +282,15 @@ class RMtable(QtGui.QDockWidget):
         self.table = QtGui.QTableWidget(len(values), 2)
         #add values to the sensor
         for i, (t, v) in enumerate(zip(times, values)):
-            self.table.setItem(i, 0, QTableWidgetItem(str(t)))
-            self.table.setItem(i, 1, QTableWidgetItem(str(v)))
+            self.table.setItem(i, 0, QTableWidgetItem("%0.8f" % (t)))
+            self.table.setItem(i, 1, QTableWidgetItem("%0.8f" % (v)))
         #name the table columns
         headers = ['Time', sensorName]
         self.table.setHorizontalHeaderLabels(headers)
+        self.table.setMaximumWidth(241)
+        self.table.setMinimumWidth(241)
 
         self.setWidget(self.table)
-
 
 #---------------------------------
 #-----SensorSelectPopup Class-----
