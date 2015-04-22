@@ -5,7 +5,7 @@ Rensselaer Motorsport Race Data Analyzer
 Author: Mitchell Mellone (mellom3@rpi.edu)
 Created: 4/17/2015
 Last Modified: 4/17/2015
-Version: 0.4.0
+Version: 0.4.1
 
 Copyright (C) 2015  Rensselaer Motorsports
 
@@ -184,8 +184,8 @@ class RMplot(QtGui.QDockWidget):
     title = title for the plot
     '''
     def __init__(self, senNames):
-        title = ''
-        for name in senNames:
+        title = senNames[0]
+        for name in senNames[1:]:
             title = title + ', ' + name
         self.names = senNames
         super(RMplot, self).__init__(title)
@@ -194,9 +194,11 @@ class RMplot(QtGui.QDockWidget):
         self.layout.addItem(self.timeLabel)
         self.plot = self.layout.addPlot(row=1, col=0)
         self.data = None
+        self.colors = ['r', 'g', 'b', 'c', 'm', 'y', 'k', 'w']
+        self.labelCols = ['red', 'green', 'blue', 'cyan', 'magenta', 'yellow', 'kahki', 'white']
         self.hLines = []
         for l in range(0, len(senNames)):
-            self.hLines.append(pg.InfiniteLine(angle=0, movable=False))
+            self.hLines.append(pg.InfiniteLine(angle=0, movable=False, pen=self.colors[l%(len(self.colors))]))
         self.vLine = pg.InfiniteLine(angle=90, movable=False)
         self.proxy = pg.SignalProxy(self.plot.scene().sigMouseMoved, rateLimit=60, slot=self.mouseMoved)
         self.setAllowedAreas(Qt.DockWidgetArea_Mask)
@@ -228,9 +230,9 @@ class RMplot(QtGui.QDockWidget):
         ypadding = abs(ymax-ymin) * 0.1
         tmax = self.data.get_max_sensor_value('time') #find the maximum time
 
-        for name in self.names:
+        for i, name in enumerate(self.names):
             values = self.data.get_sensor_values(str(name))
-            self.plot.plot(times, values, pen=(255, 0, 0))
+            self.plot.plot(times, values, pen=self.colors[i%len(self.colors)])
 
         self.plot.setLimits(xMin=0-xpadding, xMax=times[len(times)-1]+xpadding, yMin=ymin-ypadding, yMax=ymax+ypadding)
         self.plot.setRange(xRange=(0, tmax), yRange=(ymin, ymax), padding=0.0) #sets the initial range of the plot
@@ -287,12 +289,20 @@ class RMplot(QtGui.QDockWidget):
             mousePoint = self.plot.vb.mapSceneToView(pos)
             index = int(mousePoint.x())
             index = self.data.normalize_time(mousePoint.x())
+
             currX = self.data.get_elapsed_times()[index]
             self.vLine.setPos(currX)
+            label = "<span style='font-size: 12pt'>Time=%0.4f seconds,   " % currX
+
+            currYs = []
             for i, name in enumerate(self.names):
                 currY = self.data.get_sensor_values(str(name))[index]
                 self.hLines[i].setPos(currY)
-            self.timeLabel.setText("<span style='font-size: 12pt'>Time=%0.4f seconds,   <span style='color: red'>Value=%0.4f units</span>" % (currX, currY))
+                # label = label + "<span style='color: %s red'>%s=%0.4f" % (self.labelCols[i%len(self.labelCols)], str(name), currY)
+                label = label + "<span style='color: %s'>%s=%0.4f units,  " % (self.labelCols[i%len(self.labelCols)], str(name), currY)
+
+            self.timeLabel.setText(label)
+            # self.timeLabel.setText("<span style='font-size: 12pt'>Time=%0.4f seconds,   <span style='color: red'>Value=%0.4f units</span>" % (currX, currY))
 
 #-----------------------
 #-----RMtable Class-----
