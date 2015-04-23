@@ -5,7 +5,7 @@ Rensselaer Motorsport Race Data Analyzer
 Author: Mitchell Mellone (mellom3@rpi.edu)
 Created: 4/17/2015
 Last Modified: 4/17/2015
-Version: 0.4.1
+Version: 0.4.3
 
 Copyright (C) 2015  Rensselaer Motorsports
 
@@ -126,14 +126,14 @@ class GUI_window(QtGui.QMainWindow):
         if self.prompt != None:
             self.prompt.close()
 
-    #----------------
-    #RMplot FUNCTIONS
-    #----------------
+    #--------------------------
+    #-----RMplot FUNCTIONS-----
+    #--------------------------
     '''
     Creates a SensorSelctPopup to prompt user for sensor
     '''
     def RMplotSelect(self):
-        self.prompt = MultSensorSelectPopup(self.data.get_list_of_sensors())
+        self.prompt = SensorSelectPopup(self.data.get_list_of_sensors())
         self.connect(self.prompt.getButton(), SIGNAL("clicked()"), self.RMplotHandleButtonPress)
         self.prompt.show()
 
@@ -147,7 +147,7 @@ class GUI_window(QtGui.QMainWindow):
     '''
     def createRMplot(self, sensorNames):
         newRMplot = RMplot(sensorNames)
-        newRMplot.makePlot(self.data, sensorNames)
+        newRMplot.makePlot(self.data)
         self.addDockWidget(Qt.TopDockWidgetArea, newRMplot)
 
     #---------------------------
@@ -166,9 +166,12 @@ class GUI_window(QtGui.QMainWindow):
         self.prompt.close()
         self.prompt = None
 
+    '''
+    Creates an RMTable and adds it to the GUI
+    '''
     def createRMtable(self, sensorName):
         newRMtable = RMtable(sensorName)
-        newRMtable.makeTable(self.data, sensorName)
+        newRMtable.makeTable(self.data)
         self.addDockWidget(Qt.TopDockWidgetArea, newRMtable)
 
 #----------------------
@@ -187,6 +190,7 @@ class RMplot(QtGui.QDockWidget):
         title = senNames[0]
         for name in senNames[1:]:
             title = title + ', ' + name
+        title = title + ' Plot'
         self.names = senNames
         super(RMplot, self).__init__(title)
         self.layout = pg.GraphicsLayoutWidget()
@@ -195,7 +199,7 @@ class RMplot(QtGui.QDockWidget):
         self.plot = self.layout.addPlot(row=1, col=0)
         self.data = None
         self.colors = ['r', 'g', 'b', 'c', 'm', 'y', 'k', 'w']
-        self.labelCols = ['red', 'green', 'blue', 'cyan', 'magenta', 'yellow', 'kahki', 'white']
+        self.labelCols = ['red', 'green', 'blue', 'cyan', 'magenta', 'yellow', 'khaki', 'white']
         self.hLines = []
         for l in range(0, len(senNames)):
             self.hLines.append(pg.InfiniteLine(angle=0, movable=False, pen=self.colors[l%(len(self.colors))]))
@@ -209,9 +213,8 @@ class RMplot(QtGui.QDockWidget):
     data = dataBase of sensor values and time
     sensorName = name of the sensor to plot
     '''
-    def makePlot(self, data, sensorNames):
+    def makePlot(self, data):
         # Get times and values
-        self.names = sensorNames #made a member variable b/c it is used in mouseMoved()
         self.data = data
         times = self.data.get_elapsed_times()
 
@@ -246,42 +249,9 @@ class RMplot(QtGui.QDockWidget):
             self.plot.addItem(self.hLines[i], ignoreBounds=True)
 
         self.setWidget(self.layout)
-        # # Get times and values
-        # self.name = sensorName #made a member variable b/c it is used in mouseMoved()
-        # self.data = data
-        # times = self.data.get_elapsed_times()
-        # values = self.data.get_sensor_values(str(self.name))
-        #
-        # #Find limits for the view range of the plot
-        # ymin = self.data.get_min_sensor_value(str(self.name))
-        # if ymin > 0:
-        #     ymin = 0
-        # ymax = self.data.get_max_sensor_value(str(self.name))
-        # if ymax < 0:
-        #     ymax = 0
-        # #determine initial padding
-        # xpadding = times[len(times)-1] * 0.1
-        # ypadding = abs(ymax-ymin) * 0.1
-        # tmax = self.data.get_max_sensor_value('time') #find the maximum time
-        #
-        # self.plot.plot(times, values, pen=(255, 0, 0))
-        #
-        # self.plot.setLimits(xMin=0-xpadding, xMax=times[len(times)-1]+xpadding, yMin=ymin-ypadding, yMax=ymax+ypadding)
-        # self.plot.setRange(xRange=(0, tmax), yRange=(ymin, ymax), padding=0.0) #sets the initial range of the plot
-        # self.plot.showGrid(x=True, y=True, alpha=0.5)
-        # self.plot.setLabel('bottom', text='Time Elapsed', units="s")
-        # self.plot.setLabel('left', text=self.name, units=" unit")
-        #
-        # self.plot.setTitle(title=self.name)
-        #
-        # #for crosshair
-        # self.plot.addItem(self.vLine, ignoreBounds=True)
-        # self.plot.addItem(self.hLine, ignoreBounds=True)
-        #
-        # self.setWidget(self.layout)
 
     '''
-    Used to add a crosshair to the plot
+    Update Crosshair when mouse is moved on plot
     '''
     def mouseMoved(self, evt):
         pos = evt[0]  ## using signal proxy turns original arguments into a tuple
@@ -292,17 +262,17 @@ class RMplot(QtGui.QDockWidget):
 
             currX = self.data.get_elapsed_times()[index]
             self.vLine.setPos(currX)
-            label = "<span style='font-size: 12pt'>Time=%0.4f seconds,   " % currX
+            label = "<span style='font-size: 12pt'>Time=%0.3f seconds,   " % currX
 
             currYs = []
             for i, name in enumerate(self.names):
                 currY = self.data.get_sensor_values(str(name))[index]
                 self.hLines[i].setPos(currY)
-                # label = label + "<span style='color: %s red'>%s=%0.4f" % (self.labelCols[i%len(self.labelCols)], str(name), currY)
-                label = label + "<span style='color: %s'>%s=%0.4f units,  " % (self.labelCols[i%len(self.labelCols)], str(name), currY)
+                label = label + "<span style='color: %s'>%s=%0.3f units" % (self.labelCols[i%len(self.labelCols)], str(name), currY)
+                if i != len(self.names)-1:
+                    label = label + ",  "
 
             self.timeLabel.setText(label)
-            # self.timeLabel.setText("<span style='font-size: 12pt'>Time=%0.4f seconds,   <span style='color: red'>Value=%0.4f units</span>" % (currX, currY))
 
 #-----------------------
 #-----RMtable Class-----
@@ -314,64 +284,42 @@ class RMtable(QtGui.QDockWidget):
     Params:
     title = title for the plot
     '''
-    def __init__(self, title):
+    def __init__(self, senNames):
+        title = senNames[0]
+        for name in senNames[1:]:
+            title = title + ', ' + name
+        title = title + ' Table'
+        self.names = senNames
         super(RMtable, self).__init__(title)
         self.table = None
 
-    def makeTable(self, data, sensorName):
+    def makeTable(self, data):
+        #initialize list of times and the table
         times = data.get_elapsed_times()
-        values = data.get_sensor_values(str(sensorName))
-        self.table = QtGui.QTableWidget(len(values), 2)
-        #add values to the sensor
-        for i, (t, v) in enumerate(zip(times, values)):
-            self.table.setItem(i, 0, QTableWidgetItem("%0.8f" % (t)))
-            self.table.setItem(i, 1, QTableWidgetItem("%0.8f" % (v)))
-        #name the table columns
-        headers = ['Time', sensorName]
+        self.table = QtGui.QTableWidget(len(times), len(self.names)+1)
+        headers = ['Time']
+
+        #add times to the table
+        for r, t in enumerate(times):
+            self.table.setItem(r, 0, QTableWidgetItem("%0.8f" % (t)))
+
+        #add the sensor values to the table
+        for c, sen in enumerate(self.names):
+            values = data.get_sensor_values(str(sen))
+            for r, v in enumerate(values):
+                self.table.setItem(r, c+1, QTableWidgetItem("%0.8f" % (v)))
+            headers.append(str(sen))
         self.table.setHorizontalHeaderLabels(headers)
-        self.table.setMaximumWidth(241)
-        self.table.setMinimumWidth(241)
+        self.table.horizontalHeader().setResizeMode(QtGui.QHeaderView.ResizeToContents)
+        # self.table.setMaximumWidth(121*(len(self.names)+1))
+        # self.table.setMinimumWidth(121*(len(self.names)+1))
 
         self.setWidget(self.table)
 
-#------------------------------------------
-#-----Single Sensor-Select Popup Class-----
-#------------------------------------------
+#-----------------------------------
+#-----Sensor-Select Popup Class-----
+#-----------------------------------
 class SensorSelectPopup(QWidget):
-    '''
-    SensorSelectPopup is a popup window that allows the user to select a
-    specific sensor
-    '''
-    def __init__(self, sensor_list):
-        QWidget.__init__(self)
-        # self.setGeometry(QRect(200, 200, 200, 100))
-
-        options = sensor_list
-        self.dropdown_box = QtGui.QComboBox(parent=self)
-        self.dropdown_box.addItems(options)
-        self.dropdown_box.setMinimumWidth(150)
-        self.dropdown_box.move(25, 10)
-        # self.dropdown_box.show()
-
-        self.btn = QtGui.QPushButton("Select", parent=self)
-        self.btn.setGeometry(QRect(12, 50, 175, 40))
-
-    '''
-    Returns the sensor that is currently selected
-    '''
-    def getState(self):
-        return self.dropdown_box.currentText()
-
-    '''
-    Returns the QPushButton object
-    '''
-    def getButton(self):
-        return self.btn
-
-#--------------------------------------------
-#-----Multiple Sensor-Select Popup Class-----
-#--------------------------------------------
-class MultSensorSelectPopup(QWidget):
     '''
     MultSensorSelectPopup is a popup window that gives the user the list of
     possible sensors and asks them to select multiple sensors
@@ -430,9 +378,9 @@ class MultSensorSelectPopup(QWidget):
         self.senList.addItem(item.text())
         self.selectedList.takeItem(self.selectedList.row(item))
 
-#------------------------
-#-----Main Functions-----
-#------------------------
+#-----------------------
+#-----Main Function-----
+#-----------------------
 def main():
     app = QtGui.QApplication(sys.argv)
     mw = GUI_window()
