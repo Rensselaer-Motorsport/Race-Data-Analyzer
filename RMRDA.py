@@ -7,7 +7,7 @@ Created: 4/17/2015
 Last Modified: 4/17/2015
 Version: 0.4.3
 
-Copyright (C) 2015  Rensselaer Motorsports
+Copyright (C) 2015 Rensselaer Motorsports
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -39,22 +39,19 @@ import database as db
 #-----Main Window Class-----
 #---------------------------
 class GUI_window(QtGui.QMainWindow):
-    #------------------------
-    #GENERAL WINDOW FUNCTIONS
-    #------------------------
+    #----------------------------------
+    #-----GENERAL WINDOW FUNCTIONS-----
+    #----------------------------------
     '''
     GUI_window is the main window for the UI and is created at start up.
     '''
     def __init__(self):
         super(GUI_window, self).__init__()
-        self.initUI()
         self.prompt = None #for selecting things
         self.data = db.DataBase() #stores the data to be plotted
-
-        #store list of current figures and such
-        self.current_figures = {}
-        self.plot_docks = []
-        self.table_docks = []
+        self.version = 0x043 #Should be equal to version in header comment (without periods)
+        self.objectCounter = 0
+        self.initUI()
 
         self.data.parse_file('test_buffer.txt') #parses data to be used this session
 
@@ -62,9 +59,9 @@ class GUI_window(QtGui.QMainWindow):
     Initializes the basic functions for the UI
     '''
     def initUI(self):
-        #-----------------------------------------
-        #CREATE ACTIONS THAT PERFORM GENERAL TASKS
-        #-----------------------------------------
+        #---------------------------------------------------
+        #-----CREATE ACTIONS THAT PERFORM GENERAL TASKS-----
+        #---------------------------------------------------
         #Exit action initialization
         exitAction = QtGui.QAction(QtGui.QIcon('exit.png'), '&Exit', self)
         exitAction.setShortcut('Ctrl+Q')
@@ -78,19 +75,32 @@ class GUI_window(QtGui.QMainWindow):
         createRMplot.triggered.connect(self.RMplotSelect)
 
         #Create Table action initialization
-        createRMtable = QtGui.QAction(QtGui.QIcon('green+.png'), '&Add Graph', self)
+        createRMtable = QtGui.QAction(QtGui.QIcon('green+.png'), '&Add Table', self)
         createRMtable.setShortcut('Ctrl+T')
         createRMtable.setStatusTip('Add a table of data from a sensor.')
         createRMtable.triggered.connect(self.RMtableSelect)
 
-        #----------------------------
-        #INITIALIZE MAIN GUI ELEMENTS
-        #----------------------------
+        saveAction = QtGui.QAction('&Save', self)
+        saveAction.setShortcut('Ctrl+S')
+        saveAction.setStatusTip('Saves the current window state.')
+        saveAction.triggered.connect(self.saveAs)
+
+        openAction = QtGui.QAction('&Open', self)
+        openAction.setShortcut('Ctrl+O')
+        openAction.setStatusTip('Opens a previous window state.')
+        openAction.triggered.connect(self.load)
+
+        #--------------------------------------
+        #-----INITIALIZE MAIN GUI ELEMENTS-----
+        #--------------------------------------
         #Status bar initialization
         self.statusBar().showMessage('Ready')
 
         #Tool bar initialization
-        self.toolbar = self.addToolBar('Exit')
+        self.toolbar = QToolBar(parent=self)
+        self.addToolBar(self.toolbar)
+        self.toolbar.setObjectName(str(self.objectCounter))
+        self.objectCounter += 1
         self.toolbar.addAction(exitAction)
         self.toolbar.addAction(createRMplot)
         self.toolbar.addAction(createRMtable)
@@ -98,12 +108,12 @@ class GUI_window(QtGui.QMainWindow):
         #Menu bar initialization
         menubar = self.menuBar()
         self.file_menu = menubar.addMenu('&File')
-        self.edit_menu = menubar.addMenu('&Edit')
-        self.tools_menu = menubar.addMenu('&Tools')
         self.view_menu = menubar.addMenu('&View')
         self.help_menu = menubar.addMenu('&Help')
 
         #File Menu initialization
+        self.file_menu.addAction(saveAction)
+        self.file_menu.addAction(openAction)
         self.file_menu.addAction(createRMplot)
         self.file_menu.addAction(createRMtable)
         self.file_menu.addAction(exitAction)
@@ -122,9 +132,28 @@ class GUI_window(QtGui.QMainWindow):
         #Show the window
         self.show()
 
+    #---------------------------
+    #-----UTILITY FUNCTIONS-----
+    #---------------------------
+    #Called if main window is closed
     def closeEvent(self, event):
         if self.prompt != None:
             self.prompt.close()
+
+    def saveAs(self):
+        fileName = QtGui.QFileDialog.getSaveFileName(parent=self, caption='Save As', filter='RM files (*.rmrda)')
+        f = open(str(fileName), 'wb')
+        f.write(self.saveState())
+        f.close
+
+    def load(self):
+        fileName = QtGui.QFileDialog.getOpenFileName(parent=self, caption='Open')
+
+        byteArrayIn = None
+        with open(fileName, 'rb') as fin:
+            byteArrayIn = fin.read()
+        self.restoreState(byteArrayIn)
+
 
     #--------------------------
     #-----RMplot FUNCTIONS-----
@@ -147,6 +176,8 @@ class GUI_window(QtGui.QMainWindow):
     '''
     def createRMplot(self, sensorNames):
         newRMplot = RMplot(sensorNames)
+        newRMplot.setObjectName(str(self.objectCounter))
+        self.objectCounter += 1
         newRMplot.makePlot(self.data)
         self.addDockWidget(Qt.TopDockWidgetArea, newRMplot)
 
@@ -171,6 +202,8 @@ class GUI_window(QtGui.QMainWindow):
     '''
     def createRMtable(self, sensorName):
         newRMtable = RMtable(sensorName)
+        newRMtable.setObjectName(str(self.objectCounter))
+        self.objectCounter += 1
         newRMtable.makeTable(self.data)
         self.addDockWidget(Qt.TopDockWidgetArea, newRMtable)
 
