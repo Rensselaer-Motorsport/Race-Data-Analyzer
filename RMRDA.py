@@ -33,6 +33,7 @@ import pyqtgraph.console
 from pyqtgraph.dockarea import *
 import numpy as np
 from PyQt4.Qt import *
+import xlwt
 import database as db
 
 #---------------------------
@@ -80,15 +81,23 @@ class GUI_window(QtGui.QMainWindow):
         createRMtable.setStatusTip('Add a table of data from a sensor.')
         createRMtable.triggered.connect(self.RMtableSelect)
 
-        saveAction = QtGui.QAction('&Save', self)
+        #SaveAs action initialization
+        saveAction = QtGui.QAction('&SaveAs', self)
         saveAction.setShortcut('Ctrl+S')
         saveAction.setStatusTip('Saves the current window state.')
         saveAction.triggered.connect(self.saveAs)
 
+        #Load action initialization
         openAction = QtGui.QAction('&Open', self)
         openAction.setShortcut('Ctrl+O')
         openAction.setStatusTip('Opens a previous window state.')
         openAction.triggered.connect(self.load)
+
+        #Export_to_Excel action initialization
+        exportExlAction = QtGui.QAction('Export to Excel', self)
+        exportExlAction.setShortcut('Ctrl+E')
+        exportExlAction.setStatusTip('Exports all of the data to excel.')
+        exportExlAction.triggered.connect(self.exportExcelFile)
 
         #--------------------------------------
         #-----INITIALIZE MAIN GUI ELEMENTS-----
@@ -114,6 +123,7 @@ class GUI_window(QtGui.QMainWindow):
         #File Menu initialization
         self.file_menu.addAction(saveAction)
         self.file_menu.addAction(openAction)
+        self.file_menu.addAction(exportExlAction)
         self.file_menu.addAction(createRMplot)
         self.file_menu.addAction(createRMtable)
         self.file_menu.addAction(exitAction)
@@ -140,12 +150,14 @@ class GUI_window(QtGui.QMainWindow):
         if self.prompt != None:
             self.prompt.close()
 
+    #only saves the state, not the actual stuff
     def saveAs(self):
         fileName = QtGui.QFileDialog.getSaveFileName(parent=self, caption='Save As', filter='RM files (*.rmrda)')
         f = open(str(fileName), 'wb')
         f.write(self.saveState())
         f.close
 
+    #only loads a state, not any actual material
     def load(self):
         fileName = QtGui.QFileDialog.getOpenFileName(parent=self, caption='Open')
 
@@ -154,6 +166,24 @@ class GUI_window(QtGui.QMainWindow):
             byteArrayIn = fin.read()
         self.restoreState(byteArrayIn)
 
+    def exportExcelFile(self):
+        #generate the excel file 'book'
+        book = xlwt.Workbook()
+        sh = book.add_sheet('all data')
+        sh.write(0, 0, label='Time')
+        for r, t in enumerate(self.data.get_elapsed_times()):
+            sh.write(r+1, 0, label=t)
+
+        for c, sens in enumerate(self.data.get_list_of_sensors()):
+            sh.write(0, c+1, label=str(sens))
+            for r, v in enumerate(self.data.get_sensor_values(str(sens))):
+                sh.write(r+1, c+1, label=v)
+
+        fileName = QtGui.QFileDialog.getSaveFileName(parent=self, caption='Save As', filter='Excel Files (*.xlsx)')
+        print fileName
+        if fileName[len(fileName)-5:] != '.xlsx':
+            fileName += '.xlsx'
+        book.save(fileName)
 
     #--------------------------
     #-----RMplot FUNCTIONS-----
