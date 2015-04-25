@@ -81,7 +81,11 @@ class DataBase:
         return self.sensor_extremes[sensor_name][1]
 
     def get_list_of_sensors(self):
-        return list(self.sensors.keys())
+        sens_list = []
+        for sen in self.sensors.keys():
+            if sen != 'time':
+                sens_list.append(sen)
+        return sens_list
 
     #binary search for the index for an actual data points time closest to the given time (x)
     def normalize_time(self, x):
