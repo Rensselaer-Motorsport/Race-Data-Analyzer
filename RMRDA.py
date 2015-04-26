@@ -169,10 +169,12 @@ class GUI_window(QtGui.QMainWindow):
     def selectExcelOptions(self):
         self.prompt = ExcelExportSelectPopup(self.data.get_list_of_sensors())
         self.prompt.show()
-        self.prompt.getOKbutton().clicked.connect(self.generateExcelFile)
-        
+        print "check1"
+        self.prompt.getOkButton().clicked.connect(self.generateExcelFile)
+        print "check2"
 
     def generateExcelFile(self):
+        print "check3"
         # generate the excel file 'book'
         book = xlwt.Workbook()
 
