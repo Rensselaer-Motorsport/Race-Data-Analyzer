@@ -97,7 +97,7 @@ class GUI_window(QtGui.QMainWindow):
         exportExlAction = QtGui.QAction('Export to Excel', self)
         exportExlAction.setShortcut('Ctrl+E')
         exportExlAction.setStatusTip('Exports all of the data to excel.')
-        exportExlAction.triggered.connect(self.exportExcelFile)
+        exportExlAction.triggered.connect(self.selectExcelOptions)
 
         #--------------------------------------
         #-----INITIALIZE MAIN GUI ELEMENTS-----
@@ -166,28 +166,55 @@ class GUI_window(QtGui.QMainWindow):
             byteArrayIn = fin.read()
         self.restoreState(byteArrayIn)
 
-    def exportExcelFile(self):
+    def selectExcelOptions(self):
         self.prompt = ExcelExportSelectPopup(self.data.get_list_of_sensors())
         self.prompt.show()
-        #generate the excel file 'book'
-        book = xlwt.Workbook()
-        sh = book.add_sheet('all data')
-        sh.write(0, 0, label='Time') #write time label
-        for r, t in enumerate(self.data.get_elapsed_times()):
-            #write in the times in the left-most column
-            sh.write(r+1, 0, label=t)
-        for c, sens in enumerate(self.data.get_list_of_sensors()):
-            #write in the sensor labels on the first row
-            sh.write(0, c+1, label=str(sens))
-            for r, v in enumerate(self.data.get_sensor_values(str(sens))):
-                #write in the values under their respective sensor label
-                sh.write(r+1, c+1, label=v)
+        self.prompt.getOKbutton().clicked.connect(self.generateExcelFile)
+        
 
+    def generateExcelFile(self):
+        # generate the excel file 'book'
+        book = xlwt.Workbook()
+
+        # add all sensors to one excel sheet
+        if self.prompt.allSensorsChecked():
+            sh = book.add_sheet('all data')
+            sh.write(0, 0, label='Time') #write time label
+            for r, t in enumerate(self.data.get_elapsed_times()):
+                #write in the times in the left-most column
+                sh.write(r+1, 0, label=t)
+            for c, sens in enumerate(self.data.get_list_of_sensors()):
+                #write in the sensor labels on the first row
+                sh.write(0, c+1, label=str(sens))
+                for r, v in enumerate(self.data.get_sensor_values(str(sens))):
+                    #write in the values under their respective sensor label
+                    sh.write(r+1, c+1, label=v)
+
+        # add sensors to excel sheets as requested
+        else:
+            sheets = self.prompt.getSheets()
+            sheetNames = self.prompt.getSheetNames()
+
+            for s in sheets.keys():
+                currSheet = book.add_sheet(str(sheetNames[s]))
+                currSheet.write(0, 0, label='Time')
+                for r, t in enumerate(self.data.get_elapsed_times()):
+                    currSheet.write(r+1, 0, label=t)
+                for c, sens in enumerate(sheets[s]):
+                    currSheet.write(0, c+1, label=str(sens))
+                    for r, v in enumerate(self.data.get_sensor_values(str(sens))):
+                        currSheet.write(r+1, c+1, label=v)
+        self.prompt.close()
+        self.exportExcelFile(book)
+
+    #select a file name and export the generated excel file
+    def exportExcelFile(self, book):
         fileName = QtGui.QFileDialog.getSaveFileName(parent=self, caption='Save As', filter='Excel Files (*.xlsx)')
         print fileName
         if fileName[len(fileName)-5:] != '.xlsx':
             fileName += '.xlsx'
         book.save(fileName)
+
 
     #--------------------------
     #-----RMplot FUNCTIONS-----
@@ -449,9 +476,10 @@ class ExcelExportSelectPopup(QWidget):
 
         #Combo box selects which sheet you are on
         self.sheetSelectBox = QtGui.QComboBox(self)
-        self.sheetSelectBox.setMaximumWidth(175)
+        self.sheetSelectBox.setMaximumWidth(200)
         self.sheetSelectBox.addItem('sheet 1')
-        # self.sheetSelectBox.currentIndexChanged.connect(selectSheet)
+        self.sheetSelectBox.currentIndexChanged.connect(self.selectSheet)
+        # params for addWidget:(button, row, column, rowspan, columnspan, aligns it center)
         self.layout.addWidget(self.sheetSelectBox, 0, 0, 1, 2, Qt.AlignCenter)
 
         #setNameLabel will change the name of the sheet
@@ -463,7 +491,7 @@ class ExcelExportSelectPopup(QWidget):
         self.sheetNameBox = QtGui.QLineEdit('sheet1')
         self.sheetNameBox.setMaximumWidth(150)
         self.layout.addWidget(self.sheetNameBox, 1, 1, 1, 1, Qt.AlignLeft)
-        # self.sheetNameBox.textEdited.connect(changeName)
+        self.sheetNameBox.textEdited.connect(self.changeName)
 
         # list of all possible sensors
         self.senList = QtGui.QListWidget()
@@ -472,58 +500,67 @@ class ExcelExportSelectPopup(QWidget):
         self.senList.sortItems()
         self.layout.addWidget(self.senList, 2, 0)
 
-        #lists of all the selected sensors
+        # lists of all the selected sensors
         selectList = QtGui.QListWidget()
         selectList.itemClicked.connect(self.deselectSen)
         self.selectedLists = [] #list of all selected sensors
         self.selectedLists.append(selectList)
         self.layout.addWidget(self.selectedLists[0], 2, 1)
 
+        # create a radiobutton to allow user to automatically choose all sensors
+        self.allSensOpt = QtGui.QCheckBox('Place all sensors into one excel sheet')
+        self.allSensOpt.setCheckState(Qt.Checked)
+        self.layout.addWidget(self.allSensOpt, 3, 0, 1, 2, Qt.AlignCenter)
 
         # place the select button
         self.okBtn = QtGui.QPushButton("Ok")
-        self.okBtn.setMaximumWidth(100)
-        # params for addWidget:(button, row, column, rowspan, columnspan, aligns it center)
-        self.layout.addWidget(self.okBtn, 3, 0, 1, 1, Qt.AlignCenter)
+        self.okBtn.setMaximumWidth(150)
+        self.layout.addWidget(self.okBtn, 4, 0, 1, 1, Qt.AlignCenter)
 
         # place the new sheet button
         self.newSheetBtn = QtGui.QPushButton("New Sheet")
-        self.newSheetBtn.setMaximumWidth(100)
-        self.layout.addWidget(self.newSheetBtn, 3, 1, 1, 1, Qt.AlignCenter)
+        self.newSheetBtn.setMaximumWidth(150)
+        self.layout.addWidget(self.newSheetBtn, 4, 1, 1, 1, Qt.AlignCenter)
 
         # connect methods for selecting/deselecting a sensor when it's clicked
         self.senList.itemClicked.connect(self.selectSen)
         # connect method
         self.newSheetBtn.clicked.connect(self.makeNewSheet)
 
-    '''
-    Returns a list of the sensors that are selected
-    '''
-    def getState(self):
-        selectedSens = []
-        for i in range(0, self.selectedList.count()):
-            selectedSens.append(self.selectedList.item(i).text())
-        return selectedSens
+    # returns true if we should just place all sensors into one excel sheet
+    def allSensorsChecked(self):
+        return self.allSensOpt.isChecked()
 
+    # returns the OK button
     def getOkButton(self):
         return self.okBtn
 
-    def getNewSheetButton(self):
-        return self.newSheetBtn
+    # returns the number of sheets we need
+    def numSheets(self):
+        return len(self.sheets)
 
+    def getSheets(self):
+        return self.sheets
+
+    def getSheetNames(self):
+        return self.sheetNames
+
+    #-----------------------------
+    #-----Listening Functions-----
+    #-----------------------------
     def selectSen(self, item):
-        l = self.selectedLists[self.sheetSelectBox.currentIndex()]
-        l.addItem(item.text())
-        self.sheets[]
+        sel = self.selectedLists[self.sheetSelectBox.currentIndex()]
+        sel.addItem(item.text())
+        self.sheets[str(self.sheetSelectBox.currentText())].append(str(item.text()))
 
     def deselectSen(self, item):
-        l = self.selectedLists[self.sheetSelectBox.currentIndex()]
-        l.takeItem(l.row(item))
+        sel = self.selectedLists[self.sheetSelectBox.currentIndex()]
+        sel.takeItem(sel.row(item))
+        self.sheets[str(self.sheetSelectBox.currentText())].remove(str(item.text()))
 
     # Creates a new sheet, i.e. a new option in the combo box, and a new selectedList
     def makeNewSheet(self):
         newSheetID = 'sheet ' + str(len(self.sheets)+1)
-        print newSheetID
         self.sheets[newSheetID] = [] #add to sheets data
         self.sheetNames[newSheetID] = newSheetID #add to name data
         self.sheetSelectBox.addItem(newSheetID) #add to combo box
@@ -539,10 +576,21 @@ class ExcelExportSelectPopup(QWidget):
         self.selectedLists.append(selectList)
         self.layout.addWidget(self.selectedLists[len(self.selectedLists)-1], 2, 1)
 
+    # updates the name for a sheet
+    def changeName(self):
+        sheetID = str(self.sheetSelectBox.currentText())
+        self.sheetNames[str(sheetID)] = str(self.sheetNameBox.text())
 
-    # def changeName(self):
-    #
-    # def selectSheet(self, index):
+    # called when the sheet select in the qcombobox is changed
+    def selectSheet(self, index):
+        # only show the desired selection
+        for i, li in enumerate(self.selectedLists):
+            if i == index:
+                li.show()
+            else:
+                li.hide()
+        sheetID = self.sheetSelectBox.currentText()
+        self.sheetNameBox.setText(str(self.sheetNames[str(sheetID)]))
 
 #-----------------------
 #-----Main Function-----
