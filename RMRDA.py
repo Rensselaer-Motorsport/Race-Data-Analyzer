@@ -5,7 +5,7 @@ Rensselaer Motorsport Race Data Analyzer
 Author: Mitchell Mellone (mellom3@rpi.edu)
 Created: 4/17/2015
 Last Modified: 4/17/2015
-Version: 0.5.0
+Version: 0.6.0
 
 Copyright (C) 2015 Rensselaer Motorsports
 
@@ -53,9 +53,7 @@ class GUI_window(QtGui.QMainWindow):
         self.version = 0x050 #Should be equal to version in header comment (without periods)
         self.objectCounter = 0
         self.initUI()
-
-        self.data.parse_file('test_buffer.txt') #parses data to be used this session
-
+        
     '''
     Initializes the basic functions for the UI
     '''
@@ -99,6 +97,11 @@ class GUI_window(QtGui.QMainWindow):
         exportExlAction.setStatusTip('Exports all of the data to excel.')
         exportExlAction.triggered.connect(self.selectExcelOptions)
 
+        loadDataAction = QtGui.QAction('Load Data', self)
+        loadDataAction.setShortcut('Ctrl+L')
+        loadDataAction.setStatusTip('Load a text file of data from the car to analyze.')
+        loadDataAction.triggered.connect(self.loadData)
+
         #--------------------------------------
         #-----INITIALIZE MAIN GUI ELEMENTS-----
         #--------------------------------------
@@ -121,8 +124,9 @@ class GUI_window(QtGui.QMainWindow):
         self.help_menu = menubar.addMenu('&Help')
 
         #File Menu initialization
-        self.file_menu.addAction(saveAction)
-        self.file_menu.addAction(openAction)
+        # self.file_menu.addAction(saveAction)
+        # self.file_menu.addAction(openAction)
+        self.file_menu.addAction(loadDataAction)
         self.file_menu.addAction(exportExlAction)
         self.file_menu.addAction(createRMplot)
         self.file_menu.addAction(createRMtable)
@@ -169,12 +173,13 @@ class GUI_window(QtGui.QMainWindow):
     def selectExcelOptions(self):
         self.prompt = ExcelExportSelectPopup(self.data.get_list_of_sensors())
         self.prompt.show()
-        print "check1"
         self.prompt.getOkButton().clicked.connect(self.generateExcelFile)
-        print "check2"
+
+    def loadData(self):
+        fileName = QtGui.QFileDialog.getOpenFileName(parent=self, caption='Save As', filter='Text Files (*.txt)')
+        self.data.parse_file(fileName)
 
     def generateExcelFile(self):
-        print "check3"
         # generate the excel file 'book'
         book = xlwt.Workbook()
 
