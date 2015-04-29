@@ -53,7 +53,7 @@ class GUI_window(QtGui.QMainWindow):
         self.version = 0x050 #Should be equal to version in header comment (without periods)
         self.objectCounter = 0
         self.initUI()
-        
+
     '''
     Initializes the basic functions for the UI
     '''
@@ -102,6 +102,10 @@ class GUI_window(QtGui.QMainWindow):
         loadDataAction.setStatusTip('Load a text file of data from the car to analyze.')
         loadDataAction.triggered.connect(self.loadData)
 
+        openLicenseAction = QtGui.QAction('License', self)
+        openLicenseAction.setStatusTip('Open the license for this program.')
+        openLicenseAction.triggered.connect(self.openLicense)
+
         #--------------------------------------
         #-----INITIALIZE MAIN GUI ELEMENTS-----
         #--------------------------------------
@@ -120,7 +124,7 @@ class GUI_window(QtGui.QMainWindow):
         #Menu bar initialization
         menubar = self.menuBar()
         self.file_menu = menubar.addMenu('&File')
-        self.view_menu = menubar.addMenu('&View')
+        # self.view_menu = menubar.addMenu('&View')
         self.help_menu = menubar.addMenu('&Help')
 
         #File Menu initialization
@@ -131,6 +135,8 @@ class GUI_window(QtGui.QMainWindow):
         self.file_menu.addAction(createRMplot)
         self.file_menu.addAction(createRMtable)
         self.file_menu.addAction(exitAction)
+
+        self.help_menu.addAction(openLicenseAction)
 
         #Set main window properties
         self.setGeometry(300, 300, 750, 500)
@@ -153,6 +159,13 @@ class GUI_window(QtGui.QMainWindow):
     def closeEvent(self, event):
         if self.prompt != None:
             self.prompt.close()
+
+    #opens the license for this program
+    def openLicense(self):
+        license = open('LICENSE', 'r')
+        text = license.read()
+        self.win = LicenseWindow(text)
+        self.win.show()
 
     #only saves the state, not the actual stuff
     def saveAs(self):
@@ -221,7 +234,6 @@ class GUI_window(QtGui.QMainWindow):
         if fileName[len(fileName)-5:] != '.xlsx':
             fileName += '.xlsx'
         book.save(fileName)
-
 
     #--------------------------
     #-----RMplot FUNCTIONS-----
@@ -598,6 +610,19 @@ class ExcelExportSelectPopup(QWidget):
                 li.hide()
         sheetID = self.sheetSelectBox.currentText()
         self.sheetNameBox.setText(str(self.sheetNames[str(sheetID)]))
+
+#------------------------
+#-----License Window-----
+#------------------------
+class LicenseWindow(QWidget):
+    def __init__(self, text):
+        QWidget.__init__(self)
+        self.setGeometry(QRect(200, 200, 400, 250))
+        self.setWindowTitle("License")
+        self.layout = QBoxLayout(QBoxLayout.LeftToRight, parent=self)
+        self.display = QtGui.QTextEdit(text)
+        self.display.setReadOnly(True)
+        self.layout.addWidget(self.display)
 
 #-----------------------
 #-----Main Function-----
